@@ -1,6 +1,5 @@
 getwd()
 
-
 #import libraries
 library(dplyr)
 library(ggplot2)
@@ -11,12 +10,12 @@ library(dunn.test)
 library(purrr) 
 library(stringr)
 library(forecast)
+library(scales)
 
 
 
 
-
-
+#importing the data
 full_data <- read.csv("Airline_Delay_Cause.csv")
 head(full_data)
 
@@ -36,13 +35,11 @@ data <- data %>%
                                "AirTran Airways Corporation" = "Southwest Airlines Co.",
                                "ExpressJet Airlines LLC" = "ExpressJet Airlines Inc.",
                                "US Airways Inc." = "American Airlines Inc."))
-unique(data$carrier_name)
-unique(full_data$airport)=="HNL"
 
 nrow(full_data)
 nrow(data)
 
-
+#creating groups for the following analysis
 lowcost <- data %>%
   filter(carrier_name %in% c("JetBlue Airways", "Frontier Airlines Inc.", "Allegiant Air", 
                              "Spirit Air Lines", "PSA Airlines Inc.", "Southwest Airlines Co.", "Virgin America"))
@@ -67,29 +64,32 @@ independent <- data %>%
                               "PSA Airlines Inc.", "Hawaiian Airlines Inc."))
 
 
-# 1. Histogramm für Flughäfen mit weniger als 1 Million Flügen
+
+
+###############################not displayed in paper###########################
+
+# plots to check the distribution of flight amounts per airport
 under_1m <- ggplot(group_data %>% filter(total_flights < 1e6), 
                    aes(x = total_flights)) +
-  geom_histogram(binwidth = 50000,  # 50,000 Flüge Intervalle
+  geom_histogram(binwidth = 50000,
                  fill = "#1b9e77",
                  color = "white") +
-  labs(title = "Verteilung kleiner Flughäfen (<1M Flüge)",
-       x = "Gesamtflüge (2003-2023)",
-       y = "Anzahl Flughäfen") +
+  labs(title = "Distribution smaller airports (<1M Flights)",
+       x = "Total flights (2003-2023)",
+       y = "Amount of airports") +
   scale_x_continuous(labels = scales::comma_format(scale = 1e-3, suffix = "k"),
                      limits = c(0, 1e6)) +
   theme_minimal() +
   theme(panel.grid.minor = element_blank())
 
-# 2. Histogramm für Flughäfen mit 1 Million+ Flügen
 over_1m <- ggplot(group_data %>% filter(total_flights >= 1e6), 
                   aes(x = total_flights)) +
-  geom_histogram(binwidth = 250000,  # 250,000 Flüge Intervalle
+  geom_histogram(binwidth = 250000, 
                  fill = "#d95f02",
                  color = "white") +
-  labs(title = "Verteilung großer Flughäfen (1M+ Flüge)",
-       x = "Gesamtflüge (2003-2023)",
-       y = "Anzahl Flughäfen") +
+  labs(title = "Distribution smaller airports (1M+ Flights)",
+       x = "Total flights (2003-2023)",
+       y = "Amount of airports") +
   scale_x_continuous(labels = scales::comma_format(scale = 1e-6, suffix = "M"),
                      breaks = seq(1e6, max(group_data$total_flights), 2e6)) +
   theme_minimal() +
@@ -97,6 +97,7 @@ over_1m <- ggplot(group_data %>% filter(total_flights >= 1e6),
 
 under_1m
 over_1m
+################################################################################
 
 overthreehtsd <- data %>%
   filter(airport %in% airports$airport[airports$total_flights > 300000])
@@ -104,11 +105,14 @@ overthreehtsd <- data %>%
 underthreehtsd <- data %>%
   filter(airport %in% airports$airport[airports$total_flights <= 300000])
 
-dim (overonem)
-unique(overthreehtsd$airport)
-unique(underthreehtsd$airport)
-dim(underonem)
-#Average domestic flights per year
+
+
+
+
+
+
+##  INTRODUCTION  ##
+#Avg domestic flights per year
 tot_avg <- sum(group_data$total_flights)/10
 #Average arriving flights per year for the Top 10 airports
 top10_avg <- sum(group_data[1:10, "total_flights"] / 10)
@@ -121,6 +125,7 @@ yearly_total <- full_data %>%
   group_by(year) %>%
   summarise(total_arr_flights = sum(arr_flights, na.rm = TRUE))
 
+#adding the points for 2013 and 2013
 total_2023<- yearly_total$total_arr_flights[11]/(8/12)
 total_2013<- yearly_total$total_arr_flights[1]/(5/12)
 
@@ -148,7 +153,7 @@ ggplot(yearly_total, aes(x = year, y = total_arr_flights)) +
     y = "Amount of arriving flights") +
   theme_minimal()
 
-# Flight delay causes
+# Flight delay causes pie charts
 causes_summary <- data %>%
   summarise(
     carrier = sum(carrier_delay, na.rm = TRUE),
@@ -203,7 +208,7 @@ ggplot(causes_long, aes(x = "", y = total, fill = Cause)) +
 
 
 
-###   LOW COST VS LEGACY
+##  LOW_COST VS LEGACY  ##
 # Percentage of lowcost/highcost flights
 lowcost_flights <- sum(lowcost$arr_flights, na.rm = TRUE)
 highcost_flights <- sum(highcost$arr_flights, na.rm = TRUE)
@@ -214,7 +219,7 @@ highcost_percentage <- (highcost_flights / total_flights_all) * 100
 lowcost_percentage
 highcost_percentage
 
-# 1. Prepare the data
+#plot for low/legacy development
 lowcost_names <- c("JetBlue Airways", "Frontier Airlines Inc.", "Allegiant Air", 
                    "Spirit Air Lines", "PSA Airlines Inc.", "Southwest Airlines Co.", "Virgin America")
 
@@ -231,7 +236,7 @@ lowcost_highcost_per_year <- data %>%
 ggplot(lowcost_highcost_per_year, aes(x = year, y = percentage, color = category)) +
   geom_line(size = 1.5) +
   geom_point(size = 3) +
-  scale_color_manual(values = c("Low-Cost" = "skyblue", "Full-Service" = "orange")) +
+  scale_color_manual(values = c("Low-Cost" = "cornflowerblue", "Full-Service" = "deeppink2")) +
   labs(
     title = "Development of Low-Cost vs Full-Service Airline Share",
     x = "Year",
@@ -242,10 +247,7 @@ ggplot(lowcost_highcost_per_year, aes(x = year, y = percentage, color = category
   scale_x_continuous(breaks = 2013:2023)
 
 
-
-
-#lowcost/ legacy table
-
+#values for cancellation/diversion/dely table with lowcost and legacy
 lowcost_cancelled <- sum(lowcost$arr_cancelled, na.rm = TRUE)
 highcost_cancelled <- sum(highcost$arr_cancelled, na.rm = TRUE)
 lowcost_diverted <- sum(lowcost$arr_diverted, na.rm = TRUE)
@@ -259,34 +261,29 @@ highcost_ontime <- sum(highcost$arr_flights-highcost$arr_del15-highcost$arr_dive
 lowcost_delayed_min <- sum(lowcost$arr_delay, na.rm=TRUE)/sum(lowcost$arr_flights, na.rm=TRUE)
 highcost_delayed_min <- sum(highcost$arr_delay, na.rm=TRUE)/sum(highcost$arr_flights, na.rm=TRUE)
 
+#test to see whether difference between cancellations/diversions is significant
 prop.test(
   x = c(lowcost_diverted, highcost_diverted),
   n = c(sum(lowcost$arr_flights, na.rm = TRUE), sum(highcost$arr_flights, na.rm = TRUE)),
-  correct = FALSE
-)
-
+  correct = FALSE)
 prop.test(
   x = c(lowcost_cancelled, highcost_cancelled),
   n = c(sum(lowcost$arr_flights, na.rm = TRUE), sum(highcost$arr_flights, na.rm = TRUE)),
-  correct = FALSE
-)
+  correct = FALSE)
 
 
 
-
-#avg delay per flight low vs legacy
-delay_per_flight <- data %>%
+#yearly avg delay per flight low vs legacy
+delay_by_year <- data %>%
   mutate(category = ifelse(carrier_name %in% lowcost_names, "Low-Cost", "Full-Service")) %>%
   group_by(year, category) %>%
   summarise(
     total_delay = sum(arr_delay, na.rm = TRUE),
     total_flights = sum(arr_flights, na.rm = TRUE),
-    avg_delay_per_flight = total_delay / total_flights
-  ) %>%
-  ungroup()
+    avg_delay_per_flight = total_delay / total_flights) %>% ungroup()
 
 #  plot
-ggplot(delay_per_flight, aes(x = year, y = avg_delay_per_flight, color = category)) +
+ggplot(delay_by_year, aes(x = year, y = avg_delay_per_flight, color = category)) +
   geom_line(size = 1.5) +
   geom_point(size = 3) +
   scale_color_manual(values = c("Low-Cost" = "cornflowerblue", "Full-Service" = "deeppink2")) +
@@ -294,67 +291,81 @@ ggplot(delay_per_flight, aes(x = year, y = avg_delay_per_flight, color = categor
     title = "Average Arrival Delay per Flight ",
     x = "Year",
     y = "Avg Delay per Flight (minutes)",
-    color = "Airline Type"
-  ) +
+    color = "Airline Type") +
   theme_minimal(base_size = 14) +
   scale_x_continuous(breaks = 2013:2023) +
   scale_y_continuous(limits = c(0, NA)) 
 
+#avg minutes
 avg_delay_by_category <- data %>%
   mutate(category = ifelse(carrier_name %in% lowcost_names, "Low-Cost", "Full-Service")) %>%
   group_by(category) %>%  
   summarise(
     total_delay = sum(arr_delay, na.rm = TRUE),
     total_flights = sum(arr_flights, na.rm = TRUE),
-    avg_delay_per_flight = total_delay / total_flights
-  )
+    avg_delay_per_flight = total_delay / total_flights)
 
 
-#seasonal
-monthly_avg_delay <- delay_per_flight_monthly %>%
-  group_by(month_name, category) %>%
+
+# Monthly avg delay per flight
+delay_by_month <- data %>%
+  mutate(category = ifelse(carrier_name %in% lowcost_names, "Low-Cost", "Full-Service")) %>%
+  group_by(month, category) %>%
   summarise(
-    mean_delay = mean(avg_delay_per_flight, na.rm = TRUE),
-    se_delay = sd(avg_delay_per_flight, na.rm = TRUE) / sqrt(n()),
-    .groups = "drop"
-  )
+    total_delay = sum(arr_delay, na.rm = TRUE),
+    total_flights = sum(arr_flights, na.rm = TRUE),
+    avg_delay_per_flight = total_delay / total_flights
+  ) %>% 
+  ungroup()
 
-
-ggplot(monthly_avg_delay, aes(x = month_name, y = mean_delay, 
-                              color = category, group = category)) +
-  geom_line(size = 1.2) +
+#plot
+ggplot(delay_by_month, aes(x = month, y = avg_delay_per_flight, 
+                           color = category, group = category)) +
+  geom_line(size = 1.5) +
   geom_point(size = 3) +
-  scale_color_manual(values = c("Low-Cost" = "cornflowerblue", 
-                                "Full-Service" = "deeppink2")) +
+  scale_color_manual(values = c("Low-Cost" = "cornflowerblue", "Full-Service" = "deeppink2")) +
   labs(
-    title = "Average Arrival Delay per Flight ",
-    x = "Year",
+    title = "Average Arrival Delay per Flight by Month",
+    subtitle = "Aggregated across all years in dataset",
+    x = "Month",
     y = "Avg Delay per Flight (minutes)",
     color = "Airline Type"
   ) +
   theme_minimal(base_size = 14) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_x_discrete(labels = month.abb)
+  scale_y_continuous(limits = c(0, NA)) +
+  scale_x_continuous(breaks = 1:12, labels = month.abb)  # Monatsabkürzungen (Jan, Feb, etc.)
 
-#test
-flight_level_data <- data %>%
+
+#tests
+#monthly-test
+wilcox.test(avg_delay_per_flight ~ category, data = delay_by_month)
+#yearly-test
+wilcox.test(avg_delay_per_flight ~ category, data = delay_by_year)
+#not aggregated over months
+data_with_category <- data %>%
   mutate(
-    category = ifelse(carrier_name %in% lowcost_names, "Low-Cost", "Full-Service"),
-    delay_per_flight = arr_delay / arr_flights
-  ) %>%
-  filter(!is.na(delay_per_flight))  # NA-Werte entfernen
+    category = ifelse(carrier_name %in% lowcost_names, "Low-Cost", "Full-Service"))
 
-shapiro.test(sample(flight_level_data$delay_per_flight[flight_level_data$category == "Low-Cost"], 5000))
-shapiro.test(sample(flight_level_data$delay_per_flight[flight_level_data$category == "Full-Service"], 5000))
+filtered_data <- data_with_category %>%
+  filter(!is.na(arr_delay), !is.na(arr_flights), arr_flights > 0)
 
-wilcox_test_result <- wilcox.test(delay_per_flight ~ category, 
-                                  data = flight_level_data)
-wilcox_test_result
+filtered_data <- filtered_data %>%
+  mutate(delay_per_flight = arr_delay / arr_flights)
 
 
+wilcox.test(delay_per_flight ~ category, data = filtered_data)
+tapply(filtered_data$delay_per_flight, filtered_data$category, median, na.rm = TRUE)
 
-## AIRLINE GROUPS
 
+
+
+
+
+
+##  A LOOK AT AIRLINES  ##
+
+#calculating market shares
 american_ct <- sum(american$arr_flights, na.rm = TRUE)
 delta_ct <- sum(delta$arr_flights, na.rm = TRUE)
 alaska_ct <- sum(alaska$arr_flights, na.rm = TRUE)
@@ -369,17 +380,14 @@ united_ct/sum(american_ct, delta_ct, alaska_ct, united_ct, independent_ct, na.rm
 independent_ct/sum(american_ct, delta_ct, alaska_ct, united_ct, independent_ct, na.rm=TRUE)
 
 
-
+# creating the plot with four subplots of all four "categories"
 calculate_normalized_stats <- function(df) {
   df %>%
     summarise(
       total_flights = n(),
-      # Normalisierte Verspätungen (pro Flug)
       avg_arr_delay_per_flight = sum(arr_delay, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE),
-      # Normalisierte Umleitungen/Stornierungen (pro Flug)
       pct_diverted_per_flight = sum(arr_diverted, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE) * 100,
       pct_canceled_per_flight = sum(arr_cancelled, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE) * 100,
-      # Anteil verspäteter Flüge (>15 Min)
       pct_delayed_per_flight = sum(arr_delay > 15, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE) * 100)}
 
 american_stats <- calculate_normalized_stats(american)
@@ -421,26 +429,24 @@ ggplot(stats_long, aes(x = airline_group, y = value, fill = airline_group)) +
       "Alaska" = "darkorange",
       "Delta" = "deeppink2",
       "United" = "dodgerblue2",
-      "Independent" = "mediumorchid3"
-    )
-  ) +
+      "Independent" = "mediumorchid3")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+#creating a line chart with absolute numbers of flights taken per group
 data_with_groups <- bind_rows(
   american %>% mutate(airline_group = "American"),
   alaska %>% mutate(airline_group = "Alaska"),
   delta %>% mutate(airline_group = "Delta"),
   united %>% mutate(airline_group = "United"),
-  independent %>% mutate(airline_group = "Independent")
-)
+  independent %>% mutate(airline_group = "Independent"))
 
 flights_per_year <- data_with_groups %>%
   group_by(airline_group, year) %>%
   summarise(
     total_flights = sum(arr_flights, na.rm = TRUE),
-    .groups = "drop"
-)
+    .groups = "drop")
 
 # Linechart
 ggplot(flights_per_year, 
@@ -450,38 +456,33 @@ ggplot(flights_per_year,
   geom_line(linewidth = 1.2) +
   geom_point(size = 2.5) +
   scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
-
   labs(
     title = "Development of flight counts per Airline Group",
-    subtitle = "Absolute Number of flights",
     x = "Year",
     y = "Count",
-    color = "Airline-Group"
-  ) +
+    color = "Airline-Group") +
   theme_minimal() +
   scale_y_continuous(
     labels = scales::comma_format(),
-    expand = expansion(mult = c(0.05, 0.1))  
-  ) + 
+    expand = expansion(mult = c(0.05, 0.1))  ) + 
   theme(
     legend.position = "bottom",
     plot.title = element_text(hjust = 0.5, face = "bold"),
     plot.subtitle = element_text(hjust = 0.5),
-    panel.grid.minor = element_blank()
-  ) +
+    panel.grid.minor = element_blank()) +
   scale_color_manual(
     values = c(
       "American" = "darkslateblue",
       "Alaska" = "darkorange",
       "Delta" = "deeppink2",
       "United" = "dodgerblue2",
-      "Independent" = "mediumorchid3"
-    )
-  )
+      "Independent" = "mediumorchid3"))
 
-########################################################
-###quick look at alaska, plot not included
-# Alaska Daten nach Ursachen analysieren
+
+
+###############################not displayed in paper###########################
+
+###quick look at alaska
 alaska_delays <- alaska %>%
   group_by(year) %>%
   summarise(
@@ -496,10 +497,8 @@ alaska_delays <- alaska %>%
   pivot_longer(
     cols = -c(year, total_flights),
     names_to = "delay_type",
-    values_to = "minutes_per_flight"
-  )
+    values_to = "minutes_per_flight")
 
-# Liniendiagramm für Alaska Verspätungen nach Ursache
 ggplot(alaska_delays, aes(x = year, y = minutes_per_flight, color = delay_type)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2) +
@@ -587,10 +586,9 @@ ggplot(delta_delays, aes(x = year, y = minutes_per_flight, color = delay_type)) 
   ) +
   guides(color = guide_legend(nrow = 2, byrow = TRUE))
 
-#################################################################
+################################################################################
 
 
-library(scales)
 
 lowcost_stats <- lowcost %>%
   group_by(carrier_name) %>%
@@ -605,25 +603,21 @@ lowcost_stats <- lowcost %>%
   arrange(avg_delay)
 
 
-# Zuerst die normalisierten Statistiken für Low-Cost-Airlines berechnen
 lowcost_stats_normalized <- lowcost %>%
   group_by(carrier_name) %>%
   summarise(
     avg_arr_delay_per_flight = sum(arr_delay, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE),
     pct_diverted_per_flight = sum(arr_diverted, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE) * 100,
     pct_canceled_per_flight = sum(arr_cancelled, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE) * 100,
-    pct_delayed_per_flight = sum(arr_delay > 15, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE) * 100
-  )
+    pct_delayed_per_flight = sum(arr_delay > 15, na.rm = TRUE) / sum(arr_flights, na.rm = TRUE) * 100)
 
-# Daten für die Visualisierung vorbereiten
 lowcost_stats_long <- lowcost_stats_normalized %>%
   pivot_longer(
     cols = -carrier_name,
     names_to = "metric",
-    values_to = "value"
-  )
+    values_to = "value")
 
-# Farbpalette für Low-Cost-Airlines definieren
+#lowcost colors
 lowcost_colors <- c(
   "JetBlue Airways" = "blue3",
   "Southwest Airlines Co." = "#FFB300",
@@ -631,10 +625,9 @@ lowcost_colors <- c(
   "Frontier Airlines Inc." = "seagreen", 
   "Allegiant Air" = "dodgerblue1", 
   "Virgin America" = "red2",  
-  "PSA Airlines Inc." = "lightpink"  
-)
+  "PSA Airlines Inc." = "lightpink"  )
 
-# Visualisierung erstellen
+#plot with 4 subplots (like before)
 ggplot(lowcost_stats_long, aes(x = carrier_name, y = value, fill = carrier_name)) +
   geom_col() +
   facet_wrap(~metric, scales = "free_y", ncol = 2,
@@ -646,7 +639,6 @@ ggplot(lowcost_stats_long, aes(x = carrier_name, y = value, fill = carrier_name)
              ))) +
   labs(
     title = "Low-Cost Airline Performance (normalized per Flight)",
-    subtitle = "Comparison of key operational metrics",
     x = "",
     y = "Value",
     fill = "Airline"
@@ -664,9 +656,7 @@ ggplot(lowcost_stats_long, aes(x = carrier_name, y = value, fill = carrier_name)
 
 
 
-#legacy
-
-# High-Cost Airlines Statistiken berechnen
+#same for legacy airlines
 highcost_stats_normalized <- highcost %>%
   group_by(carrier_name) %>%
   summarise(
@@ -678,7 +668,6 @@ highcost_stats_normalized <- highcost %>%
   ) %>%
   arrange(avg_arr_delay_per_flight)
 
-# Daten für Visualisierung vorbereiten
 highcost_stats_long <- highcost_stats_normalized %>%
   pivot_longer(
     cols = -carrier_name,
@@ -686,18 +675,21 @@ highcost_stats_long <- highcost_stats_normalized %>%
     values_to = "value"
   )
 
-# Farbpalette für High-Cost-Airlines definieren
+#legacy colors (their actual colors)
 highcost_colors <- c(
-  "American Airlines Inc." = "#0039A6",  # American Blau
-  "Delta Air Lines Inc." = "#862633",    # Delta Rot
-  "United Air Lines Inc." = "#024D98",   # United Blau
-  "Hawaiian Airlines Inc." = "#512D6D",  # Hawaiian Lila
-  "Alaska Airlines Inc." = "#4B2D83",    # Alaska Lila
-  "Envoy Air" = "#6CACE4",               # Envoy Blau
-  "Endeavor Air Inc." = "#00A170"        # Endeavor Grün
-)
+  "American Airlines Inc." = "firebrick1", 
+  "Delta Air Lines Inc." = "blue4", 
+  "United Air Lines Inc." = "royalblue2", 
+  "Hawaiian Airlines Inc." = "blueviolet", 
+  "Alaska Airlines Inc." = "cadetblue",  
+  "Envoy Air" = "#6CACE4",         
+  "American Eagle Airlines Inc." = "brown3",
+  "ExpressJet Airlines Inc." = "springgreen4",
+  "Horizon Air" = "coral1",
+  "Mesa Airlines Inc." = "ivory3",
+  "Republic Airline" = "navyblue",
+  "SkyWest Airlines Inc." = "dodgerblue")
 
-# Visualisierung erstellen
 ggplot(highcost_stats_long, aes(x = carrier_name, y = value, fill = carrier_name)) +
   geom_col() +
   facet_wrap(~metric, scales = "free_y", ncol = 2,
@@ -709,7 +701,6 @@ ggplot(highcost_stats_long, aes(x = carrier_name, y = value, fill = carrier_name
              ))) +
   labs(
     title = "High-Cost Airline Performance (normalized per Flight)",
-    subtitle = "Comparison of key operational metrics",
     x = "",
     y = "Value",
     fill = "Airline"
@@ -727,13 +718,13 @@ ggplot(highcost_stats_long, aes(x = carrier_name, y = value, fill = carrier_name
   guides(fill = guide_legend(nrow = 2, override.aes = list(size = 3)))
 
 
-### investigate hawaiian
-# Hawaiian als eigene Gruppe markieren
+
+# investigating hawaiian
 highcost_for_test <- highcost %>%
   mutate(is_hawaiian = ifelse(carrier_name == "Hawaiian Airlines Inc.", 
                               "Hawaiian", "Other High-Cost"))
 
-# Verspätungen pro Flug berechnen
+# delays per flight
 highcost_for_test <- highcost_for_test %>%
   mutate(delay_per_flight = arr_delay / arr_flights)
 highcost_for_test %>%
@@ -756,14 +747,7 @@ print(wilcox_test_result)
 
 
 
-
-
-
-
-
-
-
-## AIRPORTS
+##  AIRPORTS  ##
 
 # Cancelled flights per airport
 cancelled_per_airport <- data %>%
@@ -795,24 +779,24 @@ delayed_per_airport <- data %>%
   ) %>%
   arrange(desc(delay_rate))
 
-
+#for the top 6 table
 head(cancelled_per_airport)  
 head(diverted_per_airport)   
 head(delayed_per_airport)
 
-# Berechne Gesamtflüge pro Jahr für beide Gruppen
+# total flights
 total_flights_over <- overthreehtsd %>%
   group_by(year) %>%
-  summarise(total_flights = sum(arr_flights, na.rm = TRUE))
+  summarise(total_flights_over = sum(arr_flights, na.rm = TRUE))  # Renamed for clarity
 
 total_flights_under <- underthreehtsd %>%
   group_by(year) %>%
-  summarise(total_flights = sum(arr_flights, na.rm = TRUE))
+  summarise(total_flights_under = sum(arr_flights, na.rm = TRUE))  # Renamed for clarity
 
-# Füge Gesamtflüge zu den Verspätungsdaten hinzu und berechne Minuten pro Flug
+# Join and calculate delay minutes per flight
 delay_causes_over <- delay_causes_over %>%
   left_join(total_flights_over, by = "year") %>%
-  mutate(minutes_per_flight = minutes / total_flights)
+  mutate(minutes_per_flight = minutes / total_flights_over)  # Use the correct column name
 
 delay_causes_under <- delay_causes_under %>%
   left_join(total_flights_under, by = "year") %>%
@@ -842,20 +826,20 @@ ggplot(combined_avg_delay, aes(x = year, y = avg_delay, color = category)) +
   geom_line(size = 1.2) +
   geom_point(size = 3) +
   labs(title = "Average Arrival Delay per Flight",
-       subtitle = "Comparison between airport categories",
        x = "Year",
        y = "Average Delay (minutes)",
-       color = "Airport Category") +
-  scale_color_manual(values = c(">300k flights" = "dodgerblue", "???300k flights" = "tomato")) +
+       color = "Airport Size Category") +  # Titel der Legende angepasst
+  scale_color_manual(
+    values = c(">300k flights" = "dodgerblue", "???300k flights" = "tomato"),
+    labels = c(">300k flights" = "Large Airports (>300k)", "???300k flights" = "Small Airports (<=300k)")
+  ) +
   theme_minimal() +
   theme(legend.position = "bottom",
         panel.grid.major = element_line(color = "gray90")) +
-  scale_y_continuous(limits = c(0, NA))  # Startet y-Achse bei 0
+  scale_y_continuous(limits = c(0, NA))
 
-cat("Average delay for airports with >300k flights:\n")
 summary(avg_delay_over$avg_delay)
 
-cat("\nAverage delay for airports with ???300k flights:\n")
 summary(avg_delay_under$avg_delay)
 
 
@@ -864,7 +848,6 @@ plot_over_norm <- ggplot(delay_causes_over,
   geom_line(size = 1.2) +
   geom_point(size = 2) +
   labs(title = "Normalized Delay Causes: Airports with >300k Flights",
-       subtitle = "Delay minutes per flight",
        x = "Year",
        y = "Delay Minutes per Flight",
        color = "Cause") +
@@ -881,7 +864,6 @@ plot_under_norm <- ggplot(delay_causes_under,
   geom_line(size = 1.2) +
   geom_point(size = 2) +
   labs(title = "Normalized Delay Causes: Airports with <=300k Flights",
-       subtitle = "Delay minutes per flight",
        x = "Year",
        y = "Delay Minutes per Flight",
        color = "Cause") +
@@ -895,24 +877,16 @@ plot_under_norm <- ggplot(delay_causes_under,
 
 # Plots 
 plot_over_norm
-
 plot_under_norm
 
 
-
-
-
-
-
-
-#top5 late airports causes
+#investigating top5 late airports causes
 # Airports of interest
 top_airports <- c("ASE", "SFB", "EGE", "EWR")
 
 # Filter data for relevant airports
 filtered_data <- data %>%
   filter(airport %in% top_airports)
-
 
 # Summarise delay causes per airport
 causes_per_airport <- filtered_data %>%
@@ -944,10 +918,8 @@ print(causes_long)
 
 
 
+##  TRENDS  ##
 
-
-
-# TRENDS
 delay_per_flight <- data %>%
   group_by(year) %>%
   summarise(
@@ -958,9 +930,7 @@ delay_per_flight <- data %>%
     nas_delay_per_flight = sum(nas_delay, na.rm = TRUE) / total_flights,
     security_delay_per_flight = sum(security_delay, na.rm = TRUE) / total_flights,
     late_aircraft_delay_per_flight = sum(late_aircraft_delay, na.rm = TRUE) / total_flights,
-    mean_delay_min = mean(arr_delay, na.rm = TRUE),  # Durchschnitt pro Flug
-    
-  )
+    mean_delay_min = mean(arr_delay, na.rm = TRUE))
 
 ggplot(delay_per_flight, aes(x = year, y = total_delay_per_flight)) +
   geom_line(color = "steelblue", size = 1) +
@@ -974,9 +944,11 @@ ggplot(delay_per_flight, aes(x = year, y = total_delay_per_flight)) +
   ) +
   theme_minimal()
 
+#test whether significant
 MannKendall(delay_per_flight$total_delay_per_flight) %>% 
   print()
 
+#test whether significant without 2020
 delay_per_flight %>%
   filter(year != 2020) %>% 
   pull(total_delay_per_flight) %>%
@@ -984,8 +956,22 @@ delay_per_flight %>%
   print()
 
 
+# trends of causes
+delay_per_year <- data %>%
+  group_by(year) %>%  # Falls Kategorie berücksichtigt werden soll
+  summarise(
+    total_flights = sum(arr_flights, na.rm = TRUE),
+    total_delay = sum(arr_delay, na.rm = TRUE),
+    carrier_delay = sum(carrier_delay, na.rm = TRUE),
+    weather_delay = sum(weather_delay, na.rm = TRUE),
+    nas_delay = sum(nas_delay, na.rm = TRUE),
+    security_delay = sum(security_delay, na.rm = TRUE),
+    late_aircraft_delay = sum(late_aircraft_delay, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  mutate(
+    total_delay_per_flight = total_delay / total_flights)
 
-# DELAY CAUSES TRENDS
 delay_per_year_percent <- delay_per_year %>%
   mutate(
     carrier_delay_pct = (carrier_delay / total_delay) * 100,
@@ -993,6 +979,29 @@ delay_per_year_percent <- delay_per_year %>%
     nas_delay_pct = (nas_delay / total_delay) * 100,
     security_delay_pct = (security_delay / total_delay) * 100,
     late_aircraft_delay_pct = (late_aircraft_delay / total_delay) * 100)
+
+ggplot(delay_per_flight, aes(x = year, y = total_delay_per_flight)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(size = 2) +
+  geom_smooth(method = "lm", se = TRUE, color = "darkred", linetype = "dashed") +
+  scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
+  labs(
+    title = "Average Arrival Delay per Flight by Year",
+    x = "Year", 
+    y = "Delay per flight (minutes)"
+  ) +
+  theme_minimal()
+
+# Mann-Kendall-Test for significance
+MannKendall(delay_per_flight$total_delay_per_flight) %>% 
+  print()
+
+# test without 2020 (COVID-Year)
+delay_per_flight %>%
+  filter(year != 2020) %>% 
+  pull(total_delay_per_flight) %>%
+  MannKendall() %>% 
+  print()
 
 delay_long <- delay_per_year_percent %>%
   pivot_longer(cols = c("carrier_delay_pct", "weather_delay_pct", "nas_delay_pct", 
@@ -1009,21 +1018,41 @@ delay_long <- delay_per_year_percent %>%
 ggplot(delay_long, aes(x = year, y = percentage, color = Delay_Type, group = Delay_Type)) +
   geom_line(size = 1.2) +
   geom_point(size = 3) +
-  labs(title = "Percentage of Delay Causes by Year",
-       x = "Year",
-       y = "Percentage of Total Delays (%)") +
-  scale_color_manual(values = c("Carrier Delay" = "darkorchid",
-                                "Weather Delay" = "darkslateblue",
-                                "NAS Delay" = "deepskyblue", 
-                                "Security Delay" = "deeppink2", 
-                                "Late Aircraft Delay" = "cornflowerblue")) +
+  labs(
+    title = "Percentage of Delay Causes by Year",
+    x = "Year",
+    y = "Percentage of Total Delays (%)",
+    color = "Delay Type"
+  ) +
+  scale_color_manual(
+    values = c(
+      "Carrier Delay" = "darkorchid",
+      "Weather Delay" = "darkslateblue",
+      "NAS Delay" = "deepskyblue", 
+      "Security Delay" = "deeppink2", 
+      "Late Aircraft Delay" = "cornflowerblue"
+    ),
+    labels = c(
+      "Carrier Delay" = "Airline",
+      "Weather Delay" = "Weather",
+      "NAS Delay" = "Air Traffic", 
+      "Security Delay" = "Security", 
+      "Late Aircraft Delay" = "Late Aircraft"
+    )
+  ) +
   scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
-  theme_minimal()
+  scale_y_continuous(limits = c(0, NA)) +  
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
 
-dunn.test(delay_per_year$mean_delay_min, factor(delay_per_year$year))
 
 
-# function for Trendanalysis
+# testing for significant trends with and without 2020
 analyze_delay_trends <- function(include_2020 = TRUE) {
   filtered_data <- if (include_2020) {
     delay_per_flight
@@ -1082,17 +1111,17 @@ print(combined_trends, n = Inf)
 
 
 
-#### seasonal trends
+##  SEASONAL TRENDS  ##
 monthly_delays <- data %>%
   group_by(year, month) %>%
   summarise(
-    total_delay_min = sum(arr_delay, na.rm = TRUE),  # Gesamtverspätungen in Minuten
-    mean_delay_min = mean(arr_delay, na.rm = TRUE),  # Durchschnitt pro Flug
-    n_flights = sum(arr_flights, na.rm = TRUE),       # Anzahl Flüge
+    total_delay_min = sum(arr_delay, na.rm = TRUE),
+    mean_delay_min = mean(arr_delay, na.rm = TRUE),
+    n_flights = sum(arr_flights, na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(
-    month_name = factor(month.abb[month], levels = month.abb)  # Monatsnamen für Plots
+    month_name = factor(month.abb[month], levels = month.abb) 
   )
 
 ggplot(monthly_delays, aes(x = month_name, y = year, fill = total_delay_min)) +
@@ -1121,7 +1150,8 @@ monthly_delays %>%
 
 
 
-# not included in paper but addidtional maybe
+###############################not displayed in paper###########################
+
 ggplot(monthly_delays, aes(x = month_name, y = total_delay_min)) +
   geom_boxplot(fill = "skyblue") +
   labs(
@@ -1130,7 +1160,8 @@ ggplot(monthly_delays, aes(x = month_name, y = total_delay_min)) +
     y = "Delay (Minutes)"
   ) +
   theme_minimal()
-##
+################################################################################
+
 
 
 monthly_delays <- monthly_delays %>%
@@ -1156,6 +1187,7 @@ seasonal_stats <- monthly_delays %>%
   )
 
 kruskal.test(total_delay_min ~ season, data = monthly_delays)
+
 # Seasonal trends plot
 ggplot(monthly_delays, aes(x = year, y = total_delay_min / n_flights, color = season)) +
   geom_line(size = 0.8) +
@@ -1179,7 +1211,8 @@ pairwise_result <- pairwise.wilcox.test(monthly_delays$total_delay_min / monthly
 pairwise_result
 
 
-## not included but possible add
+###############################not displayed in paper###########################
+
 # time series
 ts_data <- ts(
   monthly_delays$total_delay_min,
@@ -1192,179 +1225,4 @@ plot(decomposed)
 
 kruskal.test(total_delay_min ~ month_name, data = monthly_delays)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#trend for low/highcost
-# Berechnung für Low-Cost Carriers
-lowcost_delay_per_year <- lowcost %>%
-  group_by(year) %>%
-  summarise(
-    total_delay = sum(arr_delay, na.rm = TRUE),
-    late_aircraft_delay = sum(late_aircraft_delay, na.rm = TRUE),
-    carrier_delay = sum(carrier_delay, na.rm = TRUE)
-  ) %>%
-  mutate(
-    late_aircraft_pct = (late_aircraft_delay / total_delay) * 100,
-    carrier_delay_pct = (carrier_delay / total_delay) * 100
-  )
-
-# Berechnung für Full-Service Carriers
-highcost_delay_per_year <- highcost %>%
-  group_by(year) %>%
-  summarise(
-    total_delay = sum(arr_delay, na.rm = TRUE),
-    late_aircraft_delay = sum(late_aircraft_delay, na.rm = TRUE),
-    carrier_delay = sum(carrier_delay, na.rm = TRUE)
-  ) %>%
-  mutate(
-    late_aircraft_pct = (late_aircraft_delay / total_delay) * 100,
-    carrier_delay_pct = (carrier_delay / total_delay) * 100
-  )
-
-# Plot 1: Late Aircraft Delay (nur Late Aircraft)
-ggplot() +
-  geom_line(data = lowcost_delay_per_year, aes(x = year, y = late_aircraft_pct, color = "Low-Cost"), size = 1.2) +
-  geom_point(data = lowcost_delay_per_year, aes(x = year, y = late_aircraft_pct), color = "darkorchid", size = 3) +
-  
-  geom_line(data = highcost_delay_per_year, aes(x = year, y = late_aircraft_pct, color = "Full-Service"), size = 1.2) +
-  geom_point(data = highcost_delay_per_year, aes(x = year, y = late_aircraft_pct), color = "darkslateblue", size = 3) +
-  
-  labs(title = "Late Aircraft Delay Percentage by Year",
-       x = "Year", y = "Percentage of Late Aircraft Delays (%)",
-       color = "Carrier Type") +
-  
-  scale_color_manual(values = c("Low-Cost" = "darkorchid", 
-                                "Full-Service" = "darkslateblue")) +
-  
-  scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
-  theme_minimal()
-
-# Plot 2: Carrier Delay (nur Carrier Delay)
-ggplot() +
-  geom_line(data = lowcost_delay_per_year, aes(x = year, y = carrier_delay_pct, color = "Low-Cost"), size = 1.2) +
-  geom_point(data = lowcost_delay_per_year, aes(x = year, y = carrier_delay_pct), color = "darkorchid", size = 3) +
-  
-  geom_line(data = highcost_delay_per_year, aes(x = year, y = carrier_delay_pct, color = "Full-Service"), size = 1.2) +
-  geom_point(data = highcost_delay_per_year, aes(x = year, y = carrier_delay_pct), color = "darkslateblue", size = 3) +
-  
-  labs(title = "Carrier Delay Percentage by Year",
-       x = "Year", y = "Percentage of Carrier Delays (%)",
-       color = "Carrier Type") +
-  
-  scale_color_manual(values = c("Low-Cost" = "darkorchid", 
-                                "Full-Service" = "darkslateblue")) +
-  
-  scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
-  theme_minimal()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#trend for holding companies
-prepare_delay_data <- function(df, group_name) {
-  df %>%
-    group_by(year) %>%
-    summarise(
-      total_delay = sum(arr_delay, na.rm = TRUE),
-      late_aircraft_delay = sum(late_aircraft_delay, na.rm = TRUE),
-      carrier_delay = sum(carrier_delay, na.rm = TRUE)) %>%
-    mutate(
-      late_aircraft_pct = (late_aircraft_delay / total_delay) * 100,
-      carrier_delay_pct = (carrier_delay / total_delay) * 100,
-      group = group_name)}
-
-american_delay <- prepare_delay_data(american, "American")
-alaska_delay <- prepare_delay_data(alaska, "Alaska")
-delta_delay <- prepare_delay_data(delta, "Delta")
-united_delay <- prepare_delay_data(united, "United")
-independent_delay <- prepare_delay_data(independent, "Independent")
-
-holding_delay_per_year <- bind_rows(
-  american_delay,
-  alaska_delay,
-  delta_delay,
-  united_delay,
-  independent_delay)
-
-
-ggplot(holding_delay_per_year, aes(x = year, y = late_aircraft_pct, color = group)) +
-  geom_line(size = 1.2) +
-  geom_point(size = 3) +
-  labs(title = "Late Aircraft Delay Percentage by Year (Holding Companies)",
-       x = "Year",
-       y = "Percentage of Late Aircraft Delays (%)",
-       color = "Holding Company") +
-  scale_color_manual(values = c(
-    "American" = "darkslateblue",
-    "Alaska" = "darkorange",
-    "Delta" = "deeppink2",
-    "United" = "dodgerblue2",
-    "Independent" = "mediumorchid3"
-  )) +
-  scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
-  theme_minimal()
-
-ggplot(holding_delay_per_year, aes(x = year, y = carrier_delay_pct, color = group)) +
-  geom_line(size = 1.2) +
-  geom_point(size = 3) +
-  labs(title = "Carrier Delay Percentage by Year (Holding Companies)",
-       x = "Year",
-       y = "Percentage of Carrier Delays (%)",
-       color = "Holding Company") +
-  scale_color_manual(values = c(
-    "American" = "darkslateblue",
-    "Alaska" = "darkorange",
-    "Delta" = "deeppink2",
-    "United" = "dodgerblue2",
-    "Independent" = "mediumorchid3"
-  )) +
-  scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
-  theme_minimal()
-
-
-
-
-
-
-
-
-
+################################################################################
