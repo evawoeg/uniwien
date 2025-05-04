@@ -1,2 +1,2 @@
-# uniwien
-uni repo for codes
+# Universität Wien
+This is Eva Wöginger's Repo for R-codes
