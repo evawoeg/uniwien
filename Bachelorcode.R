@@ -1,5 +1,5 @@
 getwd()
-
+setwd("Uni/Bachelorarbeit")
 #import libraries
 library(dplyr)
 library(ggplot2)
@@ -26,7 +26,13 @@ group_data<- full_data %>%
   summarise(total_flights = sum(arr_flights, na.rm = TRUE)) %>%
   arrange(desc(total_flights))
 
+
 airports <- group_data[1:200,]
+
+min_flights <- min(airports$total_flights)
+max_flights <- max(airports$total_flights)
+min_airport <- airports %>% filter(total_flights == min_flights)
+max_airport <- airports %>% filter(total_flights == max_flights)
 
 data <- full_data %>%
   filter(airport %in% airports$airport)
@@ -787,20 +793,46 @@ head(delayed_per_airport)
 # total flights
 total_flights_over <- overthreehtsd %>%
   group_by(year) %>%
-  summarise(total_flights_over = sum(arr_flights, na.rm = TRUE))  # Renamed for clarity
-
+  summarise(total_flights_over = sum(arr_flights, na.rm = TRUE)) 
 total_flights_under <- underthreehtsd %>%
   group_by(year) %>%
-  summarise(total_flights_under = sum(arr_flights, na.rm = TRUE))  # Renamed for clarity
+  summarise(total_flights_under = sum(arr_flights, na.rm = TRUE)) 
 
-# Join and calculate delay minutes per flight
+delay_causes_over <- overthreehtsd %>%
+  pivot_longer(
+    cols = c(carrier_delay, weather_delay, nas_delay, security_delay, late_aircraft_delay),
+    names_to = "cause",
+    values_to = "minutes"
+  ) %>%
+  group_by(year, cause) %>%
+  summarise(
+    minutes = sum(minutes, na.rm = TRUE),
+    arr_flights = sum(arr_flights, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Durchschnittliche Minuten pro Flug (über 3000-Flüge)
 delay_causes_over <- delay_causes_over %>%
   left_join(total_flights_over, by = "year") %>%
-  mutate(minutes_per_flight = minutes / total_flights_over)  # Use the correct column name
+  mutate(minutes_per_flight = minutes / total_flights_over)
+
+delay_causes_under <- underthreehtsd %>%
+  pivot_longer(
+    cols = c(carrier_delay, weather_delay, nas_delay, security_delay, late_aircraft_delay),
+    names_to = "cause",
+    values_to = "minutes"
+  ) %>%
+  group_by(year, cause) %>%
+  summarise(
+    minutes = sum(minutes, na.rm = TRUE),
+    arr_flights = sum(arr_flights, na.rm = TRUE)
+  ) %>%
+  ungroup()
 
 delay_causes_under <- delay_causes_under %>%
   left_join(total_flights_under, by = "year") %>%
-  mutate(minutes_per_flight = minutes / total_flights)
+  mutate(minutes_per_flight = minutes / total_flights_under)
+
 
 avg_delay_over <- overthreehtsd %>%
   group_by(year) %>%
@@ -842,9 +874,9 @@ summary(avg_delay_over$avg_delay)
 
 summary(avg_delay_under$avg_delay)
 
-
+delay_cause <- c("darkorchid", "cornflowerblue", "deepskyblue", "deeppink2", "darkslateblue")
 plot_over_norm <- ggplot(delay_causes_over, 
-                         aes(x = year, y = minutes_per_flight, color = delay_cause)) +
+                         aes(x = year, y = minutes_per_flight, color = cause)) +  # hier cause, nicht delay_cause
   geom_line(size = 1.2) +
   geom_point(size = 2) +
   labs(title = "Normalized Delay Causes: Airports with >300k Flights",
@@ -853,14 +885,15 @@ plot_over_norm <- ggplot(delay_causes_over,
        color = "Cause") +
   scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
   scale_color_manual(
-    values = c("darkorchid", "cornflowerblue", "deepskyblue", "deeppink2", "darkslateblue"),
+    values = delay_cause,  # deine Farbliste
     labels = c("Carrier", "Late Aircraft", "NAS", "Security", "Weather")
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
 
+
 plot_under_norm <- ggplot(delay_causes_under, 
-                          aes(x = year, y = minutes_per_flight, color = delay_cause)) +
+                          aes(x = year, y = minutes_per_flight, color = cause)) +
   geom_line(size = 1.2) +
   geom_point(size = 2) +
   labs(title = "Normalized Delay Causes: Airports with <=300k Flights",
@@ -880,7 +913,7 @@ plot_over_norm
 plot_under_norm
 
 
-#investigating top5 late airports causes
+#investigating top6 late airports causes
 # Airports of interest
 top_airports <- c("ASE", "SFB", "EGE", "EWR")
 
@@ -913,6 +946,38 @@ causes_long <- causes_long %>%
 print(causes_long)
 
 
+# Anzahl der Flüge mit NAS-Delay > 0 pro Jahr (über 300k Flüge)
+nas_flights_over <- overthreehtsd %>%
+  group_by(year) %>%
+  summarise(
+    nas_delay_flights = sum(nas_delay > 0, na.rm = TRUE),  # Anzahl Flüge mit NAS-Delay > 0
+    total_flights = sum(arr_flights, na.rm = TRUE)
+  )
+
+nas_flights_under <- underthreehtsd %>%
+  group_by(year) %>%
+  summarise(
+    nas_delay_flights = sum(nas_delay > 0, na.rm = TRUE),
+    total_flights = sum(arr_flights, na.rm = TRUE)
+  )
+
+nas_over_sum <- nas_flights_over %>%
+  summarise(
+    nas_delay_flights = sum(nas_delay_flights, na.rm = TRUE),
+    total_flights = sum(total_flights, na.rm = TRUE)
+  )
+
+nas_under_sum <- nas_flights_under %>%
+  summarise(
+    nas_delay_flights = sum(nas_delay_flights, na.rm = TRUE),
+    total_flights = sum(total_flights, na.rm = TRUE)
+  )
+
+prop.test(
+  x = c(nas_under_sum$nas_delay_flights, nas_over_sum$nas_delay_flights),
+  n = c(nas_under_sum$total_flights, nas_over_sum$total_flights),
+  correct = FALSE
+)
 
 
 
@@ -948,53 +1013,7 @@ ggplot(delay_per_flight, aes(x = year, y = total_delay_per_flight)) +
 MannKendall(delay_per_flight$total_delay_per_flight) %>% 
   print()
 
-#test whether significant without 2020
-delay_per_flight %>%
-  filter(year != 2020) %>% 
-  pull(total_delay_per_flight) %>%
-  MannKendall() %>% 
-  print()
 
-
-# trends of causes
-delay_per_year <- data %>%
-  group_by(year) %>%  # Falls Kategorie berücksichtigt werden soll
-  summarise(
-    total_flights = sum(arr_flights, na.rm = TRUE),
-    total_delay = sum(arr_delay, na.rm = TRUE),
-    carrier_delay = sum(carrier_delay, na.rm = TRUE),
-    weather_delay = sum(weather_delay, na.rm = TRUE),
-    nas_delay = sum(nas_delay, na.rm = TRUE),
-    security_delay = sum(security_delay, na.rm = TRUE),
-    late_aircraft_delay = sum(late_aircraft_delay, na.rm = TRUE),
-    .groups = 'drop'
-  ) %>%
-  mutate(
-    total_delay_per_flight = total_delay / total_flights)
-
-delay_per_year_percent <- delay_per_year %>%
-  mutate(
-    carrier_delay_pct = (carrier_delay / total_delay) * 100,
-    weather_delay_pct = (weather_delay / total_delay) * 100,
-    nas_delay_pct = (nas_delay / total_delay) * 100,
-    security_delay_pct = (security_delay / total_delay) * 100,
-    late_aircraft_delay_pct = (late_aircraft_delay / total_delay) * 100)
-
-ggplot(delay_per_flight, aes(x = year, y = total_delay_per_flight)) +
-  geom_line(color = "steelblue", size = 1) +
-  geom_point(size = 2) +
-  geom_smooth(method = "lm", se = TRUE, color = "darkred", linetype = "dashed") +
-  scale_x_continuous(breaks = seq(2013, 2023, by = 1)) +
-  labs(
-    title = "Average Arrival Delay per Flight by Year",
-    x = "Year", 
-    y = "Delay per flight (minutes)"
-  ) +
-  theme_minimal()
-
-# Mann-Kendall-Test for significance
-MannKendall(delay_per_flight$total_delay_per_flight) %>% 
-  print()
 
 # test without 2020 (COVID-Year)
 delay_per_flight %>%
@@ -1035,7 +1054,7 @@ ggplot(delay_long, aes(x = year, y = percentage, color = Delay_Type, group = Del
     labels = c(
       "Carrier Delay" = "Airline",
       "Weather Delay" = "Weather",
-      "NAS Delay" = "Air Traffic", 
+      "NAS Delay" = "NAS", 
       "Security Delay" = "Security", 
       "Late Aircraft Delay" = "Late Aircraft"
     )
